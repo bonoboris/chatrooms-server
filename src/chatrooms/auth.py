@@ -3,14 +3,9 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
+import fastapi
 import pydantic
 from fastapi import (
-    Depends,
-    HTTPException,
-    Request,
-    Response,
-    WebSocket,
-    WebSocketException,
     status,
 )
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -26,9 +21,7 @@ from chatrooms.settings import Settings
 TOKEN_TYPE = "bearer"  # noqa: S105
 TOKEN_URL = "/login"  # noqa: S105
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 2 * 60
-COOKIE_MAX_AGE_SECONDS = 2 * 60 * 60
-CREDENTIALS_EXCEPTION = HTTPException(
+CREDENTIALS_EXCEPTION = fastapi.HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Could not validate credentials",
     headers={"WWW-Authenticate": "Bearer"},
@@ -66,21 +59,16 @@ async def authenticate_user(db: DB, username: str, password: str) -> schemas.Use
     return user
 
 
-def create_access_token(
-    data: dict[str, Any], secret_key: str, expires_delta: timedelta | None = None
-) -> str:
+def create_access_token(data: dict[str, Any], secret_key: str, expires_delta: timedelta) -> str:
     """Create an JWT access token."""
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(tz=UTC) + expires_delta
-    else:
-        expire = datetime.now(tz=UTC) + timedelta(minutes=15)
+    expire = datetime.now(tz=UTC) + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(claims=to_encode, key=secret_key, algorithm=ALGORITHM)
 
 
 async def login(
-    response: Response,
+    response: fastapi.Response,
     db: DB,
     settings: Settings,
     form_data: OAuth2PasswordRequestForm,
@@ -90,22 +78,21 @@ async def login(
     """Log user in and return the access JWT token."""
     user = await authenticate_user(db, form_data.username, form_data.password)
     if user is None:
-        raise HTTPException(
+        raise fastapi.HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username},
         secret_key=settings.secret_key,
-        expires_delta=access_token_expires,
+        expires_delta=timedelta(seconds=settings.access_token_expires),
     )
     if use_cookie:
         response.set_cookie(
             key="Authorization",
             value=f"Bearer {access_token}",
-            max_age=COOKIE_MAX_AGE_SECONDS,
+            max_age=settings.cookie_max_age,
             httponly=True,
             secure=True,
             path="/",
@@ -117,13 +104,13 @@ async def login(
 
 # --- Dependencies ---
 
-LoginFormData = Annotated[OAuth2PasswordRequestForm, Depends()]
+LoginFormData = Annotated[OAuth2PasswordRequestForm, fastapi.Depends()]
 
 
 class OAuth2PasswordBearerCookie(OAuth2PasswordBearer):
     """OAuth2PasswordBearer with cookie support."""
 
-    async def __call__(self, request: Request) -> str | None:
+    async def __call__(self, request: fastapi.Request) -> str | None:
         """Get token from cookie or header."""
         authorization = request.cookies.get("Authorization", request.headers.get("Authorization"))
         scheme, param = get_authorization_scheme_param(authorization)
@@ -136,7 +123,7 @@ class OAuth2PasswordBearerCookie(OAuth2PasswordBearer):
 
 BEARER_COOKIE = OAuth2PasswordBearerCookie(tokenUrl=TOKEN_URL)
 
-BearerToken = Annotated[str, Depends(BEARER_COOKIE)]
+BearerToken = Annotated[str, fastapi.Depends(BEARER_COOKIE)]
 
 
 async def validate_token(db: DB, settings: Settings, token: str) -> schemas.UserDB:
@@ -161,32 +148,32 @@ async def get_current_user(db: DB, settings: Settings, token: BearerToken) -> sc
     return await validate_token(db, settings, token)
 
 
-CurrentUser = Annotated[schemas.UserFull, Depends(get_current_user)]
+CurrentUser = Annotated[schemas.UserFull, fastapi.Depends(get_current_user)]
 
 
 async def get_current_active_user(current_user: CurrentUser) -> CurrentUser:
     """Authed active user dependency."""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise fastapi.HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
     return current_user
 
 
-ActiveUser = Annotated[schemas.UserFull, Depends(get_current_active_user)]
+ActiveUser = Annotated[schemas.UserFull, fastapi.Depends(get_current_active_user)]
 
 
 # --- WS Dependencies ---
 
 
-def get_bearer_token_from_websocket(ws: WebSocket) -> str:
+def get_bearer_token_from_websocket(ws: fastapi.WebSocket) -> str:
     """Get bearer token value from WebSocket."""
     authorization = ws.cookies.get("Authorization", ws.headers.get("Authorization"))
     scheme, param = get_authorization_scheme_param(authorization)
     if not authorization or scheme.lower() != TOKEN_TYPE:
-        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+        raise fastapi.WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
     return param
 
 
-WebSocketBearerToken = Annotated[str, Depends(get_bearer_token_from_websocket)]
+WebSocketBearerToken = Annotated[str, fastapi.Depends(get_bearer_token_from_websocket)]
 
 
 async def get_current_user_from_websocket(
@@ -196,7 +183,7 @@ async def get_current_user_from_websocket(
     return await validate_token(db, settings, token)
 
 
-WebSocketCurrentUser = Annotated[schemas.UserFull, Depends(get_current_user_from_websocket)]
+WebSocketCurrentUser = Annotated[schemas.UserFull, fastapi.Depends(get_current_user_from_websocket)]
 
 
 async def get_current_active_user_from_websocket(
@@ -204,8 +191,10 @@ async def get_current_active_user_from_websocket(
 ) -> WebSocketCurrentUser:
     """Authed active user dependency."""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise fastapi.HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
     return current_user
 
 
-WebSocketActiveUser = Annotated[schemas.UserFull, Depends(get_current_active_user_from_websocket)]
+WebSocketActiveUser = Annotated[
+    schemas.UserFull, fastapi.Depends(get_current_active_user_from_websocket)
+]

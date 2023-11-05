@@ -7,11 +7,11 @@ from os import path
 from random import randbytes
 from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, HTTPException, UploadFile
+import fastapi
+from fastapi import status
 
-from chatrooms.auth import ActiveUser
+from chatrooms import auth, schemas
 from chatrooms.routers.commons import utcnow
-from chatrooms.schemas import File
 from chatrooms.settings import Settings
 
 IMAGE_TYPES = (
@@ -33,7 +33,9 @@ def format_octets(size: int) -> str:
 
 
 async def validate_file(
-    file: UploadFile, max_size: int = 0, allowed_types: str | abc.Collection[str] | None = None
+    file: fastapi.UploadFile,
+    max_size: int = 0,
+    allowed_types: str | abc.Collection[str] | None = None,
 ) -> tuple[bytes, str, str]:
     """Validate file, raise error if doesn't match constraints.
 
@@ -45,16 +47,23 @@ async def validate_file(
     filename = file.filename
 
     if max_size > 0 and size > max_size:
-        raise HTTPException(400, f"File size exceed limit: {format_octets(max_size)}")
+        raise fastapi.HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"File size exceed limit: {format_octets(max_size)}"
+        )
     if content_type is None:
-        raise HTTPException(400, "Missing file content type")
+        raise fastapi.HTTPException(status.HTTP_400_BAD_REQUEST, "Missing file content type")
     if filename is None:
-        raise HTTPException(400, "Missing file name")
+        raise fastapi.HTTPException(status.HTTP_400_BAD_REQUEST, "Missing file name")
     if allowed_types is not None:
         if isinstance(allowed_types, str) and file.content_type != allowed_types:
-            raise HTTPException(400, f"Invalid file content type, expected: {allowed_types}")
+            raise fastapi.HTTPException(
+                status.HTTP_400_BAD_REQUEST, f"Invalid file content type, expected: {allowed_types}"
+            )
         if content_type not in allowed_types:
-            raise HTTPException(400, f"Invalid file content type, expected on of: {allowed_types}")
+            raise fastapi.HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Invalid file content type, expected on of: {allowed_types}",
+            )
     return data, filename, content_type
 
 
@@ -73,13 +82,13 @@ class FileWriterClass:
     """Write a file on the filesystem as a backgroud task."""
 
     def __init__(
-        self, settings: Settings, user: ActiveUser, background_tasks: BackgroundTasks
+        self, settings: Settings, user: auth.ActiveUser, background_tasks: fastapi.BackgroundTasks
     ) -> None:
         self.settings = settings
         self.user = user
         self.background_tasks = background_tasks
 
-    def __call__(self, folder: str, data: bytes, filename: str, content_type: str) -> File:
+    def __call__(self, folder: str, data: bytes, filename: str, content_type: str) -> schemas.File:
         """Write file on filesystem as backgroud task and return File instance."""
         size = len(data)
         checksum = hashlib.sha256(data).hexdigest()
@@ -87,7 +96,7 @@ class FileWriterClass:
         fs_filename = generate_filename(folder=folder, checksum=checksum, uploaded_at=uploadad_at)
         fs_path = path.join(self.settings.fs_root, fs_filename)
         self.background_tasks.add_task(write_on_filesystem, fs_path, data)
-        return File(
+        return schemas.File(
             fs_filename=fs_filename,
             filename=filename,
             checksum=checksum,
@@ -97,7 +106,7 @@ class FileWriterClass:
         )
 
 
-FileWriter = Annotated[FileWriterClass, Depends(FileWriterClass)]
+FileWriter = Annotated[FileWriterClass, fastapi.Depends(FileWriterClass)]
 
 
 class UpdloadFilePolicy:
@@ -110,7 +119,9 @@ class UpdloadFilePolicy:
         self.allowed_types = allowed_types
         self.folder = folder
 
-    async def __call__(self, upload_file: UploadFile, file_writer: FileWriter) -> File:
+    async def __call__(
+        self, upload_file: fastapi.UploadFile, file_writer: FileWriter
+    ) -> schemas.File:
         """Validate file, write on filesystem, and return `File` instance.
 
         Raise error if doesn't match constraints.
