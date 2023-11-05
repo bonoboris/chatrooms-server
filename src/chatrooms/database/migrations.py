@@ -72,6 +72,17 @@ class MigrationProtocol(abc.ABC):
     @staticmethod
     async def get_version(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> int:
         """Get database version, if not existing return 0."""
+        await cursor.execute(
+            """SELECT EXISTS (
+                SELECT 1
+                FROM pg_tables
+                WHERE tablename = 'version' AND schemaname = 'public'
+            );"""
+        )
+        row = await cursor.fetchone()
+        if row is None or not row["exists"]:
+            return 0
+
         await cursor.execute("""SELECT version FROM version;""")
         row = await cursor.fetchone()
         if row is None:

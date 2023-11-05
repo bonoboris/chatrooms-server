@@ -1,6 +1,5 @@
-from fastapi.testclient import TestClient
-
 from chatrooms.database.connections import DB
+from fastapi.testclient import TestClient
 
 
 async def test_login(client: TestClient, db: DB):
