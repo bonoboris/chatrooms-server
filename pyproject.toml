@@ -1,0 +1,91 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "chatrooms"
+version = "0.1.0"
+description = "Chartrooms web app backend with FastAPI"
+authors = [{ name = "bonoboris", email = "bonoboris@mailo.com" }]
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.11"
+classifiers = ["Framework :: FastAPI", "Programming Language :: Python :: 3"]
+dependencies = [
+    "fastapi[all]>=0.100.1",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg[binary]>=3.1.9",
+    "python-jose[cryptography]>=3.3.0",
+]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "black[d]>=23.7.0",
+    "coverage>=7.2.7",
+    "flake8>=6.1.0",
+    "isort>=5.12.0",
+    "pyright>=1.1.318",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.1",
+    "nox>=2023.4.22",
+    "devtools>=0.11.0",
+]
+
+[tool.pdm.scripts]
+start = "uvicorn 'chatrooms.app:create_app' --factory"
+test = "pytest"
+
+lint = "ruff lint src"
+format = "ruff format src"
+
+type-check = "pyright src"
+
+cov-erase = "coverage erase"
+cov-run = "coverage run -m pytest"
+cov-report = "coverage html"
+cov = { composite = ["cov-erase", "cov-run", "cov-report"] }
+
+[tool.pytest.ini_options]
+# pytest
+minversion = "6.0"
+addopts = "-ra"
+testpaths = ["tests"]
+filterwarnings = ["ignore:'crypt' is deprecated:DeprecationWarning"]
+# pytest asyncio
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+include = ["src/**"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+select = ["ALL"]
+ignore = [
+    "PTH",
+    "ANN101",
+    "ANN102",
+    "ANN401",
+    "D107",
+    "COM812",
+    "ISC001",
+    "TCH",
+    "S101",
+]
+
+[tool.ruff.flake8-type-checking]
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "pydantic_settings.BaseSettings",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.pylint]
+max-args = 8
+
+[tool.ruff.flake8-builtins]
+builtins-ignorelist = ["id"]
