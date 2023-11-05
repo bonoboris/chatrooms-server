@@ -6,6 +6,10 @@
   "python.analysis.inlayHints.variableTypes": true,
   "python.analysis.diagnosticMode": "workspace",
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true,
+      "source.fixAll": true
+    }
   }
 }

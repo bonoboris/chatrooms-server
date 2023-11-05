@@ -1,12 +1,22 @@
 """Schemas for chatrooms app."""
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
+import psycopg.rows
 import pydantic
 
 
-class MessageIn(pydantic.BaseModel):
+class BaseModel(pydantic.BaseModel):
+    """`pydantic.BaseModel` wrapper."""
+
+    @classmethod
+    def get_row_factory(cls) -> psycopg.rows.BaseRowFactory[Self]:
+        """Get row factory for this model."""
+        return psycopg.rows.class_row(cls)
+
+
+class MessageIn(BaseModel):
     """In Message schema."""
 
     room_id: int
@@ -21,21 +31,21 @@ class Message(MessageIn):
     created_at: datetime
 
 
-class RoomWebsocketIn(pydantic.BaseModel):
+class RoomWebsocketIn(BaseModel):
     """Room Websocket incoming event."""
 
     event: Literal["message"]
     data: MessageIn
 
 
-class RoomWebsocketOutMessage(pydantic.BaseModel):
+class RoomWebsocketOutMessage(BaseModel):
     """Room Websocket outgoing message event."""
 
     event: Literal["message"] = "message"
     data: Message
 
 
-class RoomWebsocketOutEnterLeaveData(pydantic.BaseModel):
+class RoomWebsocketOutEnterLeaveData(BaseModel):
     """Room Websocket outgoing enter/leave event data."""
 
     user_id: int
@@ -43,14 +53,14 @@ class RoomWebsocketOutEnterLeaveData(pydantic.BaseModel):
     time: datetime
 
 
-class RoomWebsocketOutEnter(pydantic.BaseModel):
+class RoomWebsocketOutEnter(BaseModel):
     """Room Websocket outgoing enter event."""
 
     event: Literal["enter"] = "enter"
     data: RoomWebsocketOutEnterLeaveData
 
 
-class RoomWebsocketOutLeave(pydantic.BaseModel):
+class RoomWebsocketOutLeave(BaseModel):
     """Room Websocket outgoing leave event."""
 
     event: Literal["leave"] = "leave"
@@ -63,7 +73,7 @@ RoomWebsocketOut = Annotated[
 ]
 
 
-class RoomIn(pydantic.BaseModel):
+class RoomIn(BaseModel):
     """Room In schema."""
 
     name: str
@@ -80,7 +90,7 @@ class Room(RoomIn):
 TodoStatus = Literal["todo", "in progress", "done"]
 
 
-class TodoIn(pydantic.BaseModel):
+class TodoIn(BaseModel):
     """Todo item."""
 
     status: TodoStatus
@@ -96,7 +106,7 @@ class Todo(TodoIn):
     modified_at: datetime
 
 
-class UserIn(pydantic.BaseModel):
+class UserIn(BaseModel):
     """User create schema."""
 
     username: str
@@ -104,7 +114,7 @@ class UserIn(pydantic.BaseModel):
     password: str
 
 
-class User(pydantic.BaseModel):
+class User(BaseModel):
     """User schema."""
 
     id: int
@@ -126,7 +136,7 @@ class UserDB(UserFull):
     digest: str
 
 
-class File(pydantic.BaseModel):
+class File(BaseModel):
     """File."""
 
     fs_filename: str
@@ -144,7 +154,7 @@ class FileDB(File):
     user_id: int
 
 
-class RoomUser(pydantic.BaseModel):
+class RoomUser(BaseModel):
     """Room User."""
 
     room_id: int

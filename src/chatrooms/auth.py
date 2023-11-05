@@ -18,7 +18,8 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from chatrooms import database, schemas
+from chatrooms import schemas
+from chatrooms.database import queries
 from chatrooms.database.connections import DB
 from chatrooms.settings import Settings
 
@@ -57,7 +58,7 @@ def hash_password(password: str) -> str:
 
 async def authenticate_user(db: DB, username: str, password: str) -> schemas.UserDB | None:
     """Authenticate user from database."""
-    user = await database.users.get_user_by_username(db, username)
+    user = await queries.select_user_by_username(db, username)
     if user is None:
         return None
     if not BCRYPT.verify(password, user.digest):
@@ -138,8 +139,8 @@ BEARER_COOKIE = OAuth2PasswordBearerCookie(tokenUrl=TOKEN_URL)
 BearerToken = Annotated[str, Depends(BEARER_COOKIE)]
 
 
-async def get_current_user(db: DB, settings: Settings, token: BearerToken) -> schemas.UserDB:
-    """Authed user dependency."""
+async def validate_token(db: DB, settings: Settings, token: str) -> schemas.UserDB:
+    """Validate token, if valid return UserDB instance, otherwise raise HTTP 401 exception."""
     try:
         payload = jwt.decode(token=token, key=settings.secret_key, algorithms=[ALGORITHM])
     except JWTError as err:
@@ -149,10 +150,15 @@ async def get_current_user(db: DB, settings: Settings, token: BearerToken) -> sc
     if username is None:
         raise CREDENTIALS_EXCEPTION
     token_data = TokenData(username=username)
-    user = await database.users.get_user_by_username(db, token_data.username)
+    user = await queries.select_user_by_username(db, token_data.username)
     if user is None:
         raise CREDENTIALS_EXCEPTION
     return user
+
+
+async def get_current_user(db: DB, settings: Settings, token: BearerToken) -> schemas.UserDB:
+    """Authed user dependency."""
+    return await validate_token(db, settings, token)
 
 
 CurrentUser = Annotated[schemas.UserFull, Depends(get_current_user)]
@@ -187,19 +193,7 @@ async def get_current_user_from_websocket(
     db: DB, settings: Settings, token: WebSocketBearerToken
 ) -> schemas.UserDB:
     """Auth user dependency for websockets."""
-    try:
-        payload = jwt.decode(token=token, key=settings.secret_key, algorithms=[ALGORITHM])
-    except JWTError as err:
-        raise CREDENTIALS_EXCEPTION from err
-
-    username: str | None = payload.get("sub")
-    if username is None:
-        raise CREDENTIALS_EXCEPTION
-    token_data = TokenData(username=username)
-    user = await database.users.get_user_by_username(db, token_data.username)
-    if user is None:
-        raise CREDENTIALS_EXCEPTION
-    return user
+    return await validate_token(db, settings, token)
 
 
 WebSocketCurrentUser = Annotated[schemas.UserFull, Depends(get_current_user_from_websocket)]

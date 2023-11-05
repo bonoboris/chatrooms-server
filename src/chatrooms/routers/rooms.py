@@ -4,43 +4,47 @@ import asyncio
 import types
 from typing import ClassVar, Self
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+import fastapi
+from fastapi import status
 
-from chatrooms import auth, database, schemas
-from chatrooms.database.connections import DB
+from chatrooms import auth, schemas
+from chatrooms.database import DB, queries
 from chatrooms.routers.commons import Pagination, default_errors, utcnow
 
-router = APIRouter(
+router = fastapi.APIRouter(
     prefix="/rooms",
     tags=["rooms"],
-    responses=default_errors(401),
+    responses=default_errors(status.HTTP_401_UNAUTHORIZED),
 )
 
 
 @router.get("/")
 async def get_all_rooms(db: DB, page: Pagination, _user: auth.ActiveUser) -> list[schemas.Room]:
     """Get all rooms."""
-    return await database.rooms.get_rooms(db=db, **page.model_dump())
+    return await queries.select_all_rooms(db, limit=page.limit, offset=page.skip)
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, responses=default_errors(403))
+@router.post(
+    "/", status_code=status.HTTP_201_CREATED, responses=default_errors(status.HTTP_403_FORBIDDEN)
+)
 async def create_room(db: DB, user: auth.ActiveUser, data: schemas.RoomIn) -> schemas.Room:
     """Create a new room item."""
-    return await database.rooms.create_room(
-        db=db, room=data, created_by=user.id, created_at=utcnow()
-    )
+    return await queries.insert_room(db, name=data.name, created_by=user.id, created_at=utcnow())
 
 
-@router.get("/{room_id}", responses=default_errors(404))
-async def get_one_rooms(db: DB, room_id: int, _user: auth.ActiveUser) -> schemas.Room | None:
-    """Get a room."""
-    return await database.rooms.get_room_by_id(db=db, room_id=room_id)
+@router.get("/{room_id}", responses=default_errors(status.HTTP_404_NOT_FOUND))
+async def get_room_by_id(db: DB, room_id: int, _user: auth.ActiveUser) -> schemas.Room | None:
+    """Get one room by id."""
+    room = await queries.select_room_by_id(db, id=room_id)
+    if room is None:
+        raise fastapi.HTTPException(status.HTTP_404_NOT_FOUND)
+    return room
 
 
 class WebsocketManager:
     """Room websocket manager."""
 
-    __CONNECTIONS: ClassVar[dict[str, list["WebsocketManager"]]] = {}
+    __CONNECTIONS: ClassVar[dict[int, list["WebsocketManager"]]] = {}
 
     EventIn = schemas.RoomWebsocketIn
     EventOut = schemas.RoomWebsocketOut
@@ -49,7 +53,7 @@ class WebsocketManager:
     EventOutLeave = schemas.RoomWebsocketOutLeave
     EventOutMessage = schemas.RoomWebsocketOutMessage
 
-    def __init__(self, ws: WebSocket, room_id: str, user: schemas.User) -> None:
+    def __init__(self, ws: fastapi.WebSocket, room_id: int, user: schemas.User) -> None:
         self.ws = ws
         self.room_id = room_id
         self.user = user
@@ -91,7 +95,7 @@ class WebsocketManager:
     ) -> bool:
         """Call .disconnect()."""
         await self.disconnect()
-        if exc_type == WebSocketDisconnect:
+        if exc_type == fastapi.WebSocketDisconnect:
             return True
         return False
 
@@ -130,14 +134,18 @@ class WebsocketManager:
 
 @router.websocket("/{room_id}")
 async def message_websocket(
-    db: DB, user: auth.WebSocketActiveUser, ws: WebSocket, room_id: str
+    db: DB, user: auth.WebSocketActiveUser, ws: fastapi.WebSocket, room_id: int
 ) -> None:
     """Websocket for a room."""
     async with WebsocketManager(ws=ws, room_id=room_id, user=user) as manager:
         while True:
             event = await manager.receive()
-            message = await database.messages.create_message(
-                db=db, message=event.data, created_by=user.id, created_at=utcnow()
+            message = await queries.insert_message(
+                db,
+                content=event.data.content,
+                room_id=room_id,
+                created_by=user.id,
+                created_at=utcnow(),
             )
             event = WebsocketManager.EventOutMessage(data=message)
             await manager.notify_all(event=event, include_self=True)

@@ -1,7 +1,6 @@
+from chatrooms.database.connections import DB
 from fastapi.testclient import TestClient
 from psycopg.pq import ConnStatus
-
-from chatrooms.database.connections import DB
 
 
 def test_app_status(client: TestClient):

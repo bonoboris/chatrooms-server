@@ -1,12 +1,10 @@
 """Database connection and helpers."""
 
-from . import connections, files, messages, rooms, todos, users
+from . import connections, queries
+from .connections import DB
 
 __all__ = (
+    "DB",
     "connections",
-    "files",
-    "messages",
-    "rooms",
-    "todos",
-    "users",
+    "queries",
 )

@@ -3,8 +3,8 @@
 import datetime
 from typing import Annotated, Any, Literal
 
+import fastapi
 import pydantic
-from fastapi import Depends
 
 
 class DeleteStatus(pydantic.BaseModel):
@@ -28,7 +28,7 @@ class PaginationParams(pydantic.BaseModel):
     sort_dir: Literal["asc", "desc"] = "asc"
 
 
-Pagination = Annotated[PaginationParams, Depends()]
+Pagination = Annotated[PaginationParams, fastapi.Depends()]
 
 
 def default_errors(*codes: int) -> dict[int | str, dict[str, Any]]:

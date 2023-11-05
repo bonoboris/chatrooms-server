@@ -2,22 +2,22 @@
 
 from typing import Literal
 
+import fastapi
 import pydantic
-from fastapi import APIRouter, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi import responses, status
 
 from chatrooms import auth
 from chatrooms.database.connections import DB
 from chatrooms.routers.commons import default_errors
 from chatrooms.settings import Settings
 
-router = APIRouter(tags=["general"])
+router = fastapi.APIRouter(tags=["general"])
 
 
 @router.get("/")
-async def index() -> RedirectResponse:
+async def index() -> responses.RedirectResponse:
     """Hello world route."""
-    return RedirectResponse("/docs", status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return responses.RedirectResponse("/docs", status_code=status.HTTP_308_PERMANENT_REDIRECT)
 
 
 class Status(pydantic.BaseModel):
@@ -32,9 +32,9 @@ async def get_status() -> Status:
     return Status(status="ok")
 
 
-@router.post("/login", responses=default_errors(401))
+@router.post("/login", responses=default_errors(status.HTTP_401_UNAUTHORIZED))
 async def login(
-    response: Response,
+    response: fastapi.Response,
     db: DB,
     settings: Settings,
     form_data: auth.LoginFormData,
@@ -51,6 +51,6 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(response: Response) -> None:
+async def logout(response: fastapi.Response) -> None:
     """Logout route."""
     response.delete_cookie("Authorization", secure=True, httponly=True)

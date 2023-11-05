@@ -1,10 +1,8 @@
 import asyncio
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from chatrooms import app as m_app
 from chatrooms.auth import (
     get_current_active_user,
@@ -14,6 +12,8 @@ from chatrooms.auth import (
 )
 from chatrooms.database.connections import DB, get_db_connection
 from chatrooms.settings import get_settings
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from .common import (
     add_users,
@@ -53,14 +53,14 @@ USER_DEPS = (
 )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def user_app(app: FastAPI) -> Generator[FastAPI, Any, Any]:
     app.dependency_overrides[get_settings] = get_testing_settings
     overrides = {k: get_user_no_auth for k in USER_DEPS}
     yield from with_overrides(app, overrides)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def another_user_app(app: FastAPI) -> Generator[FastAPI, Any, Any]:
     app.dependency_overrides[get_settings] = get_testing_settings
     overrides = {k: get_another_user for k in USER_DEPS}

@@ -70,7 +70,7 @@ def write_on_filesystem(filepath: str, data: bytes) -> None:
 
 
 class FileWriterClass:
-    """Write file on filesystem as backgroud task."""
+    """Write a file on the filesystem as a backgroud task."""
 
     def __init__(
         self, settings: Settings, user: ActiveUser, background_tasks: BackgroundTasks
@@ -101,7 +101,7 @@ FileWriter = Annotated[FileWriterClass, Depends(FileWriterClass)]
 
 
 class UpdloadFilePolicy:
-    """Perform checks on uploaded file."""
+    """Perform checks on uploaded file and write it on the filesystem as a backgroud task."""
 
     def __init__(
         self, folder: str, max_size: int = 0, allowed_types: str | abc.Sequence[str] = "*"
