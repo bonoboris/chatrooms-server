@@ -1,15 +1,17 @@
 """Database migrations scripts."""
 
 import abc
+import asyncio
 import contextlib
 import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
 import psycopg
+import typer
 
 from chatrooms.database.connections import get_db_connection
-from chatrooms.settings import get_settings
+from chatrooms.settings import Settings, get_settings
 
 DB = psycopg.AsyncConnection[dict[str, Any]]
 
@@ -32,18 +34,19 @@ class MigrationProtocol(abc.ABC):
     VERSION: int
 
     @classmethod
-    async def up(cls, db: DB | None = None) -> None:
+    async def up(cls, db: DB | None = None) -> bool:
         """Up migration."""
         assert hasattr(cls, "VERSION"), "Migration must have a VERSION class attribute."
         LOGGER.info(f"Up migration to version {cls.VERSION}")
         async with or_default_db(db) as db, db.cursor() as cursor:
-            version = await cls.get_version(cursor)
+            version = await cls._get_version(cursor)
             if version == cls.VERSION - 1:
                 await cls._up(cursor)
-                await cls.set_version(cursor, version=cls.VERSION)
+                await cls._set_version(cursor, version=cls.VERSION)
                 LOGGER.info(f"Done; version={cls.VERSION}")
-            else:
-                LOGGER.warning(f"Skipped: invalid current version {version}")
+                return True
+            LOGGER.warning(f"Skipped: invalid current version {version}")
+            return False
 
     @staticmethod
     @abc.abstractmethod
@@ -51,26 +54,33 @@ class MigrationProtocol(abc.ABC):
         ...
 
     @classmethod
-    async def down(cls, db: DB | None = None) -> None:
+    async def down(cls, db: DB | None = None) -> bool:
         """Down migration."""
         assert hasattr(cls, "VERSION"), "Migration must have a VERSION class attribute."
         LOGGER.info(f"Down migration from version {cls.VERSION}")
         async with or_default_db(db) as db, db.cursor() as cursor:
-            version = await cls.get_version(cursor)
+            version = await cls._get_version(cursor)
             if version == cls.VERSION:
                 await cls._down(cursor)
-                await cls.set_version(cursor, version=cls.VERSION - 1)
+                await cls._set_version(cursor, version=cls.VERSION - 1)
                 LOGGER.info(f"Done: version={cls.VERSION - 1}")
-            else:
-                LOGGER.warning(f"Skipped: invalid current version {version}")
+                return True
+            LOGGER.warning(f"Skipped: invalid current version {version}")
+            return False
 
     @staticmethod
     @abc.abstractmethod
     async def _down(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None:
         ...
 
+    @classmethod
+    async def get_version(cls, db: DB | None = None) -> int:
+        """Get database version, if not existing return 0."""
+        async with or_default_db(db) as db, db.cursor() as cursor:
+            return await cls._get_version(cursor)
+
     @staticmethod
-    async def get_version(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> int:
+    async def _get_version(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> int:
         """Get database version, if not existing return 0."""
         await cursor.execute(
             """SELECT EXISTS (
@@ -90,7 +100,7 @@ class MigrationProtocol(abc.ABC):
         return row["version"]
 
     @staticmethod
-    async def set_version(cursor: psycopg.AsyncCursor[dict[str, Any]], version: int) -> None:
+    async def _set_version(cursor: psycopg.AsyncCursor[dict[str, Any]], version: int) -> None:
         """Set database version to `cls.VERSION`."""
         await cursor.execute("""UPDATE version SET version = %(version)s;""", {"version": version})
 
@@ -177,7 +187,96 @@ class Version1(MigrationProtocol):
         )
 
 
-MIGRATIONS: tuple[type[MigrationProtocol], ...] = (Version1,)
+class Version2(MigrationProtocol):
+    """Version 2 migration.
+
+    files table:
+        - add `fs_folder` field and update with folder part of `fs_filename` field
+        - remove folder part from `fs_filename` field
+    """
+
+    VERSION = 2
+
+    @staticmethod
+    async def _up(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None:
+        await cursor.execute("""ALTER TABLE files ADD COLUMN fs_folder VARCHAR(255) NULL;""")
+        await cursor.execute("""SELECT id, fs_filename FROM files;""")
+        rows = await cursor.fetchall()
+        updates: list[dict[str, Any]] = []
+
+        for row in rows:
+            fs_folder, fs_filename = row["fs_filename"].split("/", 1)
+            updates.append({"id": row["id"], "fs_folder": fs_folder, "fs_filename": fs_filename})
+        await cursor.executemany(
+            """
+                UPDATE files
+                SET fs_folder = %(fs_folder)s, fs_filename = %(fs_filename)s
+                WHERE id = %(id)s;
+                """,
+            updates,
+        )
+        await cursor.execute("""ALTER TABLE files ALTER COLUMN fs_folder SET NOT NULL;""")
+
+    @staticmethod
+    async def _down(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None:
+        await cursor.execute(
+            """
+                SELECT id, fs_folder, fs_filename FROM files;
+                """
+        )
+        rows = await cursor.fetchall()
+        updates: list[dict[str, Any]] = []
+        for row in rows:
+            fs_filename = "/".join((row["fs_folder"], row["fs_filename"]))
+            updates.append({"id": row["id"], "fs_filename": fs_filename})
+        await cursor.executemany(
+            """
+                UPDATE files
+                SET fs_filename = %(fs_filename)s
+                WHERE id = %(id)s;
+                """,
+            updates,
+        )
+        await cursor.execute(
+            """
+                ALTER TABLE files
+                DROP COLUMN fs_folder;
+                """
+        )
+
+
+MIGRATIONS: tuple[type[MigrationProtocol], ...] = (Version1, Version2)
+
+
+async def get_version(settings: Settings | None) -> int:
+    """Get database current version."""
+    settings = get_settings()
+    async with await get_db_connection(settings) as db:
+        return await MigrationProtocol.get_version(db)
+
+
+async def one_up(settings: Settings | None) -> bool:
+    """Run one up migration."""
+    settings = get_settings()
+    async with await get_db_connection(settings) as db:
+        current_version = await MigrationProtocol.get_version(db)
+        if current_version >= len(MIGRATIONS):
+            LOGGER.info("Current version is up to date")
+            return False
+        await MIGRATIONS[current_version].up(db)
+        return True
+
+
+async def one_down(settings: Settings | None) -> bool:
+    """Run one down migration."""
+    settings = get_settings()
+    async with await get_db_connection(settings) as db:
+        current_version = await MigrationProtocol.get_version(db)
+        if current_version == 1:
+            LOGGER.info("Current version is 1")
+            return False
+        await MIGRATIONS[current_version - 1].down(db)
+        return True
 
 
 async def all_up(db: DB | None) -> None:
@@ -192,12 +291,48 @@ async def all_down(db: DB | None) -> None:
         await migration.down(db)
 
 
+cli = typer.Typer()
+
+
+@cli.callback()
+def _cli(verbose: bool = False) -> None:  # pyright: ignore[reportUnusedFunction]  # noqa: FBT001, FBT002
+    """Manage database migrations."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s  [%(levelname)-10s] %(message)-60s [%(name)-10s]",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+
+@cli.command()
+def version() -> None:
+    """Print database current version."""
+    settings = get_settings()
+    version = asyncio.run(get_version(settings))
+    typer.echo(f"version: {version}")
+
+
+@cli.command()
+def up() -> None:
+    """Run one up migration."""
+    settings = get_settings()
+    done = asyncio.run(one_up(settings))
+    typer.echo(f"Done: {done}")
+
+
+@cli.command()
+def down() -> None:
+    """Run one down migration."""
+    settings = get_settings()
+    done = asyncio.run(one_down(settings))
+    typer.echo(f"Done: {done}")
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s  [%(levelname)-10s] %(message)-60s [%(name)-10s]",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    import asyncio
-
-    asyncio.run(Version1.up())
+    typer.run(cli)

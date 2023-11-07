@@ -18,6 +18,7 @@ async def get_db_connection(settings: Settings) -> psycopg.AsyncConnection[dict[
         user=settings.pg_username,
         password=settings.pg_password,
         host=settings.pg_host,
+        port=settings.pg_port,
         dbname=settings.pg_database,
         row_factory=psycopg.rows.dict_row,
     )

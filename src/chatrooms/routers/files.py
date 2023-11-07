@@ -5,7 +5,7 @@ from os import path
 import fastapi
 from fastapi import responses, status
 
-from chatrooms import auth, schemas
+from chatrooms import auth, file_upload, schemas
 from chatrooms.database import DB, queries
 from chatrooms.routers.commons import default_errors
 from chatrooms.settings import Settings
@@ -26,10 +26,11 @@ async def get_avatar(file_id: int, db: DB, settings: Settings) -> fastapi.Respon
     """Get avatar by file_id."""
     file: schemas.FileDB | None = await queries.select_file_by_id(db, id=file_id)
 
-    if file is None or not file.fs_filename.startswith("avatars/"):
+    if file is None or file.fs_folder != file_upload.Folders.avatars:
         raise fastapi.HTTPException(status.HTTP_404_NOT_FOUND)
 
-    filepath = path.join(settings.fs_root, file.fs_filename)
+    filepath = path.join(settings.fs_root, file.fs_folder, file.fs_filename)
+
     return responses.FileResponse(
         path=filepath, filename=file.filename, media_type=file.content_type
     )

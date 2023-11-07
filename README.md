@@ -12,6 +12,9 @@ pdm install
 
 ## Usage
 
+You should have access to a running PostgreSQL database;
+by default the application will try to connect to: `postgresql://postgres:postgres@localhost:5432`
+
 Run server in development mode
 
 ```sh

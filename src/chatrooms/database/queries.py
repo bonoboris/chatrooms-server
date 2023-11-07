@@ -93,8 +93,9 @@ async def select_file_by_id(cursor: AsyncCursor[schemas.FileDB], id: int) -> sch
 
 
 @cursor_or_db(schemas.FileDB)
-async def insert_file(
+async def insert_file(  # noqa: PLR0913
     cursor: AsyncCursor[schemas.FileDB],
+    fs_folder: str,
     fs_filename: str,
     filename: str,
     content_type: str,
@@ -106,9 +107,19 @@ async def insert_file(
     """Insert a file."""
     await cursor.execute(
         """
-        INSERT INTO files(fs_filename, filename, content_type, size, checksum, uploaded_at, user_id)
+        INSERT INTO files(
+            fs_filename,
+            fs_folder,
+            filename,
+            content_type,
+            size,
+            checksum,
+            uploaded_at,
+            user_id
+        )
         VALUES (
             %(fs_filename)s,
+            %(fs_folder)s,
             %(filename)s,
             %(content_type)s,
             %(size)s,
@@ -119,6 +130,7 @@ async def insert_file(
         RETURNING *
         """,
         {
+            "fs_folder": fs_folder,
             "fs_filename": fs_filename,
             "filename": filename,
             "content_type": content_type,

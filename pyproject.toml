@@ -16,10 +16,16 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "psycopg[binary]>=3.1.9",
     "python-jose[cryptography]>=3.3.0",
+    "typer[all]>=0.9.0",
 ]
 
 [tool.pdm.version]
 source = "scm"
+
+
+[project.scripts]
+migrate = "chatrooms.database.migrations:cli"
+
 
 [tool.pdm.dev-dependencies]
 dev = [

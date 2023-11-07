@@ -34,7 +34,7 @@ async def get_user(db: DB, user_id: int) -> schemas.User:
 
 
 AvatarUploadPolicy = file_upload.UpdloadFilePolicy(
-    folder="avatars", max_size=2**20, allowed_types=file_upload.IMAGE_TYPES
+    folder=file_upload.Folders.avatars, max_size=2**20, allowed_types=file_upload.IMAGE_TYPES
 )
 AvatarFile = Annotated[schemas.File, fastapi.Depends(AvatarUploadPolicy)]
 """Perform checks on uploaded avatar file and write it on the filesystem as a backgroud task."""
@@ -45,6 +45,7 @@ async def upload_avatar(db: DB, file: AvatarFile, user: auth.ActiveUser) -> sche
     """Update user avatar, return updated user."""
     avatar = await queries.insert_file(
         db,
+        fs_folder=file_upload.Folders.avatars,
         fs_filename=file.fs_filename,
         filename=file.filename,
         content_type=file.content_type,
@@ -66,13 +67,14 @@ async def generate_avatar(
     """Update user avatar, return updated user."""
     data = m_avatar.generate_avatar(title=f"{user.username} avatar").encode("utf8")
     file = file_writer(
-        folder="avatars",
+        folder=file_upload.Folders.avatars,
         data=data,
         filename=f"{user.username} avatar.svg",
         content_type="image/svg+xml",
     )
     avatar = await queries.insert_file(
         db,
+        fs_folder=file_upload.Folders.avatars,
         fs_filename=file.fs_filename,
         filename=file.filename,
         content_type=file.content_type,

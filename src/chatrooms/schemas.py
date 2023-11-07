@@ -16,6 +16,13 @@ class BaseModel(pydantic.BaseModel):
         return psycopg.rows.class_row(cls)
 
 
+class Version(BaseModel):
+    """DB Version schema."""
+
+    id: int
+    version: int
+
+
 class MessageIn(BaseModel):
     """In Message schema."""
 
@@ -140,6 +147,7 @@ class File(BaseModel):
     """File."""
 
     fs_filename: str
+    fs_folder: str
     filename: str
     content_type: str
     size: int

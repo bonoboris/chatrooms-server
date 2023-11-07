@@ -25,6 +25,8 @@ class SettingsModel(pydantic_settings.BaseSettings):
     """PostgreSQL database user password."""
     pg_host: str = "localhost"
     """PostgreSQL database host."""
+    pg_port: int = 5432
+    """PostgreSQL database port."""
     pg_database: str = "chatrooms"
     """PostgreSQL database name."""
 

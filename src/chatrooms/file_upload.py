@@ -1,5 +1,6 @@
 """File upload helpers."""
 
+import enum
 import hashlib
 from collections import abc
 from datetime import datetime
@@ -20,6 +21,12 @@ IMAGE_TYPES = (
     "image/svg+xml",
     "image/webp",
 )
+
+
+class Folders(enum.StrEnum):
+    """Folders where files are stored."""
+
+    avatars = "avatars"
 
 
 def format_octets(size: int) -> str:
@@ -67,9 +74,9 @@ async def validate_file(
     return data, filename, content_type
 
 
-def generate_filename(folder: str, uploaded_at: datetime, checksum: str) -> str:
+def generate_filename(uploaded_at: datetime, checksum: str) -> str:
     """Generate a filepath from folder, upload_at and checksum."""
-    return f"{folder}/{int(uploaded_at.timestamp())}_{randbytes(4).hex()}_{checksum[:16]}"
+    return f"{int(uploaded_at.timestamp())}_{randbytes(4).hex()}_{checksum[:16]}"
 
 
 def write_on_filesystem(filepath: str, data: bytes) -> None:
@@ -93,10 +100,11 @@ class FileWriterClass:
         size = len(data)
         checksum = hashlib.sha256(data).hexdigest()
         uploadad_at = utcnow()
-        fs_filename = generate_filename(folder=folder, checksum=checksum, uploaded_at=uploadad_at)
-        fs_path = path.join(self.settings.fs_root, fs_filename)
+        fs_filename = generate_filename(checksum=checksum, uploaded_at=uploadad_at)
+        fs_path = path.join(self.settings.fs_root, folder, fs_filename)
         self.background_tasks.add_task(write_on_filesystem, fs_path, data)
         return schemas.File(
+            fs_folder=folder,
             fs_filename=fs_filename,
             filename=filename,
             checksum=checksum,
