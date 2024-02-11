@@ -4,9 +4,10 @@ import enum
 import hashlib
 from collections import abc
 from datetime import datetime
-from os import path
+from os import PathLike
+from pathlib import Path
 from random import randbytes
-from typing import Annotated
+from typing import Annotated, Self
 
 import fastapi
 from fastapi import status
@@ -79,9 +80,9 @@ def generate_filename(uploaded_at: datetime, checksum: str) -> str:
     return f"{int(uploaded_at.timestamp())}_{randbytes(4).hex()}_{checksum[:16]}"
 
 
-def write_on_filesystem(filepath: str, data: bytes) -> None:
+def write_on_filesystem(filepath: str | PathLike[str], data: bytes) -> None:
     """Write data on filesystem."""
-    with open(filepath, "wb") as file:
+    with Path(filepath).open("wb") as file:
         file.write(data)
 
 
@@ -89,19 +90,24 @@ class FileWriterClass:
     """Write a file on the filesystem as a backgroud task."""
 
     def __init__(
-        self, settings: Settings, user: auth.ActiveUser, background_tasks: fastapi.BackgroundTasks
+        self: Self,
+        settings: Settings,
+        user: auth.ActiveUser,
+        background_tasks: fastapi.BackgroundTasks,
     ) -> None:
         self.settings = settings
         self.user = user
         self.background_tasks = background_tasks
 
-    def __call__(self, folder: str, data: bytes, filename: str, content_type: str) -> schemas.File:
+    def __call__(
+        self: Self, folder: str, data: bytes, filename: str, content_type: str
+    ) -> schemas.File:
         """Write file on filesystem as backgroud task and return File instance."""
         size = len(data)
         checksum = hashlib.sha256(data).hexdigest()
         uploadad_at = utcnow()
         fs_filename = generate_filename(checksum=checksum, uploaded_at=uploadad_at)
-        fs_path = path.join(self.settings.fs_root, folder, fs_filename)
+        fs_path = self.settings.fs_root / folder / fs_filename
         self.background_tasks.add_task(write_on_filesystem, fs_path, data)
         return schemas.File(
             fs_folder=folder,
@@ -121,14 +127,14 @@ class UpdloadFilePolicy:
     """Perform checks on uploaded file and write it on the filesystem as a backgroud task."""
 
     def __init__(
-        self, folder: str, max_size: int = 0, allowed_types: str | abc.Sequence[str] = "*"
+        self: Self, folder: str, max_size: int = 0, allowed_types: str | abc.Sequence[str] = "*"
     ) -> None:
         self.max_size = max_size
         self.allowed_types = allowed_types
         self.folder = folder
 
     async def __call__(
-        self, upload_file: fastapi.UploadFile, file_writer: FileWriter
+        self: Self, upload_file: fastapi.UploadFile, file_writer: FileWriter
     ) -> schemas.File:
         """Validate file, write on filesystem, and return `File` instance.
 

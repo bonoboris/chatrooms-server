@@ -1,35 +1,33 @@
 """Main app file."""
 
 import contextlib
+import logging
 from collections.abc import AsyncIterator
 
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 
-from chatrooms import DB_VERSION, VERSION, routers
+from chatrooms import __version__, logs, routers
 from chatrooms.database import migrations
 
-
-class DatabaseVersionError(RuntimeError):
-    """Database version & API version mismatch."""
-
-    def __init__(self, expected: int, got: int) -> None:
-        super().__init__(f"Database version & API version mismatch: expected={expected}, got={got}")
-        self.expected = expected
-        self.got = got
+LOGGER = logging.getLogger("server")
+VERSION = __version__.__version__
+DB_VERSION = __version__.DB_VERSION
 
 
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncIterator[None]:
     """Run startup and shutdown events."""
-    db_version = await migrations.MigrationProtocol.get_version()
+    db_version = await migrations.migration_protocol.MigrationProtocol.get_version()
     if db_version != DB_VERSION:
-        raise DatabaseVersionError(expected=DB_VERSION, got=db_version)
+        raise migrations.errors.DatabaseVersionError(expected=DB_VERSION, got=db_version)
     yield
 
 
 def create_app() -> fastapi.FastAPI:
     """Create the FastAPI application."""
+    logs.configure()
+    LOGGER.info("Starting server", extra={"version": __version__})
     app = fastapi.FastAPI(
         title="Chatrooms API",
         description="""API for Chatrooms project.""",
@@ -47,10 +45,10 @@ def create_app() -> fastapi.FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:4173",
-            "http://127.0.0.1:4173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:4000",
+            "http://127.0.0.1:4000",
         ],
         allow_credentials=True,
         allow_methods=["*"],

@@ -8,6 +8,7 @@ from psycopg import AsyncCursor
 
 from chatrooms import schemas
 from chatrooms.database.connections import DB
+from chatrooms.database.errors import NotFoundAfterInsertError
 
 _PT = ParamSpec("_PT")
 _RT = TypeVar("_RT")
@@ -15,7 +16,7 @@ _TModel = TypeVar("_TModel", bound=schemas.BaseModel)
 
 
 def cursor_or_db(
-    model: type[_TModel]
+    model: type[_TModel],
 ) -> Callable[
     [Callable[Concatenate[AsyncCursor[_TModel], _PT], Awaitable[_RT]]],
     Callable[Concatenate[DB | AsyncCursor[_TModel], _PT], Awaitable[_RT]],
@@ -27,7 +28,7 @@ def cursor_or_db(
     """
 
     def decorator(
-        func: Callable[Concatenate[AsyncCursor[_TModel], _PT], Awaitable[_RT]]
+        func: Callable[Concatenate[AsyncCursor[_TModel], _PT], Awaitable[_RT]],
     ) -> Callable[Concatenate[DB | AsyncCursor[_TModel], _PT], Awaitable[_RT]]:
         @functools.wraps(func)
         async def wrapper(
@@ -141,7 +142,9 @@ async def insert_file(  # noqa: PLR0913
         },
     )
     file = await cursor.fetchone()
-    assert file is not None
+    if file is None:
+        table = "files"
+        raise NotFoundAfterInsertError(table)
     return file
 
 
@@ -196,7 +199,9 @@ async def insert_message(
         },
     )
     message = await cursor.fetchone()
-    assert message is not None
+    if message is None:
+        table = "messages"
+        raise NotFoundAfterInsertError(table)
     return message
 
 
@@ -226,7 +231,9 @@ async def insert_room(
         {"name": name, "created_by": created_by, "created_at": created_at},
     )
     room = await cursor.fetchone()
-    assert room is not None
+    if room is None:
+        table = "rooms"
+        raise NotFoundAfterInsertError(table)
     return room
 
 
@@ -281,7 +288,9 @@ async def insert_todo(
         },
     )
     todo = await cursor.fetchone()
-    assert todo is not None
+    if todo is None:
+        table = "todos"
+        raise NotFoundAfterInsertError(table)
     return todo
 
 

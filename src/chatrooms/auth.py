@@ -1,7 +1,7 @@
 """Authentication and authorization."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
 import fastapi
 import pydantic
@@ -110,7 +110,7 @@ LoginFormData = Annotated[OAuth2PasswordRequestForm, fastapi.Depends()]
 class OAuth2PasswordBearerCookie(OAuth2PasswordBearer):
     """OAuth2PasswordBearer with cookie support."""
 
-    async def __call__(self, request: fastapi.Request) -> str | None:
+    async def __call__(self: Self, request: fastapi.Request) -> str | None:
         """Get token from cookie or header."""
         authorization = request.cookies.get("Authorization", request.headers.get("Authorization"))
         scheme, param = get_authorization_scheme_param(authorization)
@@ -187,7 +187,7 @@ WebSocketCurrentUser = Annotated[schemas.UserFull, fastapi.Depends(get_current_u
 
 
 async def get_current_active_user_from_websocket(
-    current_user: WebSocketCurrentUser
+    current_user: WebSocketCurrentUser,
 ) -> WebSocketCurrentUser:
     """Authed active user dependency."""
     if not current_user.is_active:

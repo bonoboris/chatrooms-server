@@ -1,14 +1,11 @@
 from typing import Any
 
 import pytest
-from chatrooms.database.connections import DB
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from chatrooms.database.connections import DB
 
-@pytest.fixture(autouse=True)
-def _use_user_app(user_app: FastAPI):  # pyright: ignore[reportUnusedFunction]
-    pass
+pytestmark = pytest.mark.usefixtures("user_app", "db")
 
 
 async def test_create_todo(client: TestClient, db: DB):
@@ -40,7 +37,8 @@ async def test_get_todos(client: TestClient):
     assert len(data) == 1
 
 
-async def test_get_todos_another_user(client: TestClient, another_user_app: FastAPI):
+@pytest.mark.usefixtures("another_user_app")
+async def test_get_todos_another_user(client: TestClient):
     resp = client.get("/todos")
     assert resp.is_success
     data: list[dict[str, Any]] = resp.json()

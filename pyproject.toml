@@ -17,91 +17,104 @@ dependencies = [
     "psycopg[binary]>=3.1.9",
     "python-jose[cryptography]>=3.3.0",
     "typer[all]>=0.9.0",
+    "colorama>=0.4.6",
 ]
 
 [tool.pdm.version]
-source = "scm"
-
-
-[project.scripts]
-migrate = "chatrooms.database.migrations:cli"
-
+source = "file"
+path = "src/chatrooms/__version__.py"
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "black[d]>=23.7.0",
     "coverage>=7.2.7",
-    "flake8>=6.1.0",
-    "isort>=5.12.0",
     "pyright>=1.1.318",
     "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.1",
+    "pytest-asyncio<0.22",
     "nox>=2023.4.22",
     "devtools>=0.11.0",
 ]
 
 [tool.pdm.scripts]
-start = "uvicorn 'chatrooms.app:create_app' --factory"
+dev = "uvicorn 'chatrooms.app:create_app' --factory"
 test = "pytest"
 
-lint = "ruff check src"
-format = "ruff format src"
+lint = "ruff check ."
+format = "ruff format ."
 
-type-check = "pyright src"
+type-check = "pyright ."
 
 cov-erase = "coverage erase"
 cov-run = "coverage run -m pytest"
 cov-report = "coverage html"
 cov = { composite = ["cov-erase", "cov-run", "cov-report"] }
 
+
+[project.scripts]
+migrate = "chatrooms.database.migrations:cli"
+
+
 [tool.pytest.ini_options]
 # pytest
 minversion = "6.0"
-addopts = "-ra"
+addopts = "-ra" # report only failed tests
 testpaths = ["tests"]
-filterwarnings = ["ignore:'crypt' is deprecated:DeprecationWarning"]
-# pytest asyncio
+filterwarnings = [
+    "error",
+    'ignore: datetime.datetime.utcnow\(\) is deprecated:DeprecationWarning:jose',
+    "ignore:'crypt' is deprecated:DeprecationWarning:passlib",
+]
+# pytest-asyncio
 asyncio_mode = "auto"
 
 [tool.coverage.run]
 branch = true
 include = ["src/**"]
 
+[tool.pyright]
+typeCheckingMode = "strict"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+
+[tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101",
-    "ANN102",
-    "ANN401",
-    "COM812",
-    "D107",
-    "G004",
-    "ISC001",
-    "PTH",
-    "S101",
-    "TCH",
+    "COM812", # Trailling comma missing  <--  conficts with formatter
+    "ISC001", # Implicitly concatenated string literals on one line  <--  conficts with formatter
+    "D107",   # Missing docstring in `__init__`  <--  using class docstring only
+    "G004",   # Logging statement uses f-string  <--  it's ok
+    "TCH001", # Move application import into a type-checking block  <--  FastAPI use annotations at runtime
+    "TCH002", # Move third-party import into a type-checking block  <--  FastAPI use annotations at runtime
+    "TCH003", # Move standard library import into a type-checking block  <--  it's ok
 ]
 
 [tool.ruff.format]
 line-ending = "lf"
 
-[tool.ruff.flake8-type-checking]
+[tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = [
     "pydantic.BaseModel",
     "pydantic_settings.BaseSettings",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 max-args = 8
 
-[tool.ruff.flake8-builtins]
+[tool.ruff.lint.flake8-builtins]
 builtins-ignorelist = ["id"]
 
-[tool.ruff.per-file-ignores]
-"tests/**/*.py" = ["D", "ANN201", "ANN202", "PLR2004", "ARG001"]
+[tool.ruff.lint.isort]
+known-first-party = ["chatrooms"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/test_*.py" = [
+    "D",      # Docstring
+    "ANN201", # Missing return type annotation for public function
+    "ANN202", # Missing return type annotation for private function
+    "S101",   # Use of assert detected
+]

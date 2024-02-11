@@ -11,7 +11,7 @@ class BaseModel(pydantic.BaseModel):
     """`pydantic.BaseModel` wrapper."""
 
     @classmethod
-    def get_row_factory(cls) -> psycopg.rows.BaseRowFactory[Self]:
+    def get_row_factory(cls: type[Self]) -> psycopg.rows.BaseRowFactory[Self]:
         """Get row factory for this model."""
         return psycopg.rows.class_row(cls)
 

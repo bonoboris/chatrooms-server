@@ -1,10 +1,12 @@
 """Chatrooms API settings."""
 
 import functools
+from pathlib import Path
 from typing import Annotated
 
 import pydantic_settings
 from fastapi import Depends
+from pydantic import DirectoryPath
 
 
 class SettingsModel(pydantic_settings.BaseSettings):
@@ -12,11 +14,11 @@ class SettingsModel(pydantic_settings.BaseSettings):
 
     secret_key: str = "secret"
     """Secret key used to sign JWT tokens."""
-    access_token_expires: int = 10 * 60
+    access_token_expires: int = 30 * 60  # 30 minutes
     """Access token expiration time in seconds."""
-    refresh_token_expires: int = 30 * 24 * 60 * 60
+    refresh_token_expires: int = 30 * 24 * 60 * 60  # 30 days
     """Refresh token expiration time in seconds."""
-    cookie_max_age: int = 2 * 60 * 60
+    cookie_max_age: int = 2 * 60 * 60  # 2 hours
     """Cookie max age in seconds."""
 
     pg_username: str = "postgres"
@@ -30,7 +32,7 @@ class SettingsModel(pydantic_settings.BaseSettings):
     pg_database: str = "chatrooms"
     """PostgreSQL database name."""
 
-    fs_root: str = "/data/chatrooms"
+    fs_root: DirectoryPath = Path("/data/chatrooms")
     """File systeme root folder for uploaded files."""
 
     model_config = pydantic_settings.SettingsConfigDict(

@@ -1,6 +1,5 @@
 """Files related routes."""
 
-from os import path
 
 import fastapi
 from fastapi import responses, status
@@ -29,7 +28,7 @@ async def get_avatar(file_id: int, db: DB, settings: Settings) -> fastapi.Respon
     if file is None or file.fs_folder != file_upload.Folders.avatars:
         raise fastapi.HTTPException(status.HTTP_404_NOT_FOUND)
 
-    filepath = path.join(settings.fs_root, file.fs_folder, file.fs_filename)
+    filepath = settings.fs_root / file.fs_folder / file.fs_filename
 
     return responses.FileResponse(
         path=filepath, filename=file.filename, media_type=file.content_type

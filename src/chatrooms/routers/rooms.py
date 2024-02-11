@@ -44,7 +44,7 @@ async def get_room_by_id(db: DB, room_id: int, _user: auth.ActiveUser) -> schema
 class WebsocketManager:
     """Room websocket manager."""
 
-    __CONNECTIONS: ClassVar[dict[int, list["WebsocketManager"]]] = {}
+    __CONNECTIONS: ClassVar[dict[int, list[Self]]] = {}
 
     EventIn = schemas.RoomWebsocketIn
     EventOut = schemas.RoomWebsocketOut
@@ -53,42 +53,42 @@ class WebsocketManager:
     EventOutLeave = schemas.RoomWebsocketOutLeave
     EventOutMessage = schemas.RoomWebsocketOutMessage
 
-    def __init__(self, ws: fastapi.WebSocket, room_id: int, user: schemas.User) -> None:
+    def __init__(self: Self, ws: fastapi.WebSocket, room_id: int, user: schemas.User) -> None:
         self.ws = ws
         self.room_id = room_id
         self.user = user
 
     @property
-    def room_connections(self) -> list[Self]:
+    def room_connections(self: Self) -> list[Self]:
         """Current connections in the room."""
         return self.__CONNECTIONS.setdefault(self.room_id, [])
 
     @property
-    def room_users(self) -> list[int]:
+    def room_users(self: Self) -> list[int]:
         """Current users in the room."""
         return [conn.user.id for conn in self.room_connections]
 
     @property
-    def enter_event(self) -> EventOutEnter:
+    def enter_event(self: Self) -> EventOutEnter:
         """Enter event."""
         return self.EventOutEnter(
             data=self.EnterLeaveData(user_id=self.user.id, users=self.room_users, time=utcnow())
         )
 
     @property
-    def leave_event(self) -> EventOutLeave:
+    def leave_event(self: Self) -> EventOutLeave:
         """Leave event."""
         return self.EventOutLeave(
             data=self.EnterLeaveData(user_id=self.user.id, users=self.room_users, time=utcnow())
         )
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self: Self) -> Self:
         """Call .connect() and return self."""
         await self.connect()
         return self
 
     async def __aexit__(
-        self,
+        self: Self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
@@ -99,24 +99,24 @@ class WebsocketManager:
             return True
         return False
 
-    async def connect(self) -> None:
+    async def connect(self: Self) -> None:
         """Accept connection and notify all connections in the room."""
         await self.ws.accept()
         self.room_connections.append(self)
         await self.notify_all(self.enter_event, include_self=True)
 
-    async def disconnect(self) -> None:
+    async def disconnect(self: Self) -> None:
         """Disconnect and notify all connections in the room."""
         self.room_connections.remove(self)
         await self.notify_all(self.leave_event)
 
-    async def receive(self) -> EventIn:
+    async def receive(self: Self) -> EventIn:
         """Await incoming event."""
         raw = await self.ws.receive_text()
         return self.EventIn.model_validate_json(raw)
 
     async def notify_all(
-        self, event: schemas.RoomWebsocketOut, *, include_self: bool = False
+        self: Self, event: schemas.RoomWebsocketOut, *, include_self: bool = False
     ) -> None:
         """Notify all in room."""
         payload = event.model_dump_json()
@@ -127,7 +127,7 @@ class WebsocketManager:
         )
         await asyncio.gather(*tasks)
 
-    def __repr__(self) -> str:
+    def __repr__(self: Self) -> str:
         """Representation of WebsocketManager ."""
         return f"WebsocketManager(user={self.user.id}, room_id={self.room_id})"
 

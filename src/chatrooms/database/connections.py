@@ -25,7 +25,7 @@ async def get_db_connection(settings: Settings) -> psycopg.AsyncConnection[dict[
 
 
 async def _get_db_connection(
-    settings: Settings
+    settings: Settings,
 ) -> AsyncGenerator[psycopg.AsyncConnection[dict[str, Any]], None]:
     """Create, enter and yield a database connection."""
     async with await get_db_connection(settings) as conn:
