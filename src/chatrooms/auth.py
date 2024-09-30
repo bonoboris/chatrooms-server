@@ -85,7 +85,7 @@ async def login(
         )
     access_token = create_access_token(
         data={"sub": user.username},
-        secret_key=settings.secret_key,
+        secret_key=settings.secret_key.get_secret_value(),
         expires_delta=timedelta(seconds=settings.access_token_expires),
     )
     if use_cookie:
@@ -129,7 +129,11 @@ BearerToken = Annotated[str, fastapi.Depends(BEARER_COOKIE)]
 async def validate_token(db: DB, settings: Settings, token: str) -> schemas.UserDB:
     """Validate token, if valid return UserDB instance, otherwise raise HTTP 401 exception."""
     try:
-        payload = jwt.decode(token=token, key=settings.secret_key, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token=token,
+            key=settings.secret_key.get_secret_value(),
+            algorithms=[ALGORITHM],
+        )
     except JWTError as err:
         raise CREDENTIALS_EXCEPTION from err
 

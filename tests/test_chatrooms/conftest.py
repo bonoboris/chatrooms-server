@@ -81,7 +81,7 @@ def user_app(app: FastAPI) -> Generator[FastAPI, Any, Any]:
     yield from with_overrides(app, overrides)
 
 
-@pytest.fixture()
+@pytest.fixture
 def another_user_app(app: FastAPI) -> Generator[FastAPI, Any, Any]:
     """Override user dependencies with the authenticated user 'another'."""
     app.dependency_overrides[get_settings] = get_testing_settings

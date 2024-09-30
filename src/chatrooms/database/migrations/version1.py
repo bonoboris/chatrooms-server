@@ -2,6 +2,7 @@
 
 Create tables.
 """
+
 from typing import Any
 
 import psycopg
@@ -78,14 +79,15 @@ class Version1(MigrationProtocol):
         """Create tables."""
         await cursor.execute("""SELECT version FROM version;""")
         row = await cursor.fetchone()
-        if row is not None:
+        if row is None:
             return
         await cursor.execute(
             """
             DROP TABLE IF EXISTS messages;
             DROP TABLE IF EXISTS rooms;
-            DROP TABLE IF EXISTS users;
+            DROP TABLE IF EXISTS users CASCADE;
             DROP TABLE IF EXISTS todos;
             DROP TABLE IF EXISTS files;
+            DROP TABLE IF EXISTS version;
             """
         )

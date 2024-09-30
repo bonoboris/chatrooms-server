@@ -95,9 +95,8 @@ class WebsocketManager:
     ) -> bool:
         """Call .disconnect()."""
         await self.disconnect()
-        if exc_type == fastapi.WebSocketDisconnect:
-            return True
-        return False
+        # Ignore fastapi.WebSocketDisconnect exception
+        return exc_type == fastapi.WebSocketDisconnect
 
     async def connect(self: Self) -> None:
         """Accept connection and notify all connections in the room."""

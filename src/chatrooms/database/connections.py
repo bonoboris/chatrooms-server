@@ -14,9 +14,9 @@ from chatrooms.settings import Settings
 
 async def get_db_connection(settings: Settings) -> psycopg.AsyncConnection[dict[str, Any]]:
     """Get a database connection."""
-    return await psycopg.AsyncConnection.connect(
-        user=settings.pg_username,
-        password=settings.pg_password,
+    return await psycopg.AsyncConnection[dict[str, Any]].connect(
+        user=settings.pg_user,
+        password=settings.pg_password.get_secret_value(),
         host=settings.pg_host,
         port=settings.pg_port,
         dbname=settings.pg_database,

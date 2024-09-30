@@ -1,6 +1,5 @@
 """Files related routes."""
 
-
 import fastapi
 from fastapi import responses, status
 

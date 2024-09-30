@@ -38,20 +38,19 @@ class MigrationProtocol(abc.ABC):
         if not hasattr(cls, "VERSION"):
             raise MissingMigrationVersionError
         LOGGER.info(f"Up migration to version {cls.VERSION}")
-        async with or_default_db(db) as db, db.cursor() as cursor:
+        async with or_default_db(db) as conn, conn.cursor() as cursor:
             version = await cls._get_version(cursor)
             if version == cls.VERSION - 1:
                 await cls._up(cursor)
                 await cls._set_version(cursor, version=cls.VERSION)
                 LOGGER.info(f"Done; version={cls.VERSION}")
                 return True
-            LOGGER.warning(f"Skipped: invalid current version {version}")
+            LOGGER.warning(f"Skipped: current version is {version}")
             return False
 
     @staticmethod
     @abc.abstractmethod
-    async def _up(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None:
-        ...
+    async def _up(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None: ...
 
     @classmethod
     async def down(cls: type[Self], db: DB | None = None) -> bool:
@@ -59,25 +58,24 @@ class MigrationProtocol(abc.ABC):
         if not hasattr(cls, "VERSION"):
             raise MissingMigrationVersionError
         LOGGER.info(f"Down migration from version {cls.VERSION}")
-        async with or_default_db(db) as db, db.cursor() as cursor:
+        async with or_default_db(db) as conn, conn.cursor() as cursor:
             version = await cls._get_version(cursor)
             if version == cls.VERSION:
                 await cls._down(cursor)
                 await cls._set_version(cursor, version=cls.VERSION - 1)
                 LOGGER.info(f"Done: version={cls.VERSION - 1}")
                 return True
-            LOGGER.warning(f"Skipped: invalid current version {version}")
+            LOGGER.warning(f"Skipped: current version is {version}")
             return False
 
     @staticmethod
     @abc.abstractmethod
-    async def _down(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None:
-        ...
+    async def _down(cursor: psycopg.AsyncCursor[dict[str, Any]]) -> None: ...
 
     @classmethod
     async def get_version(cls: type[Self], db: DB | None = None) -> int:
         """Get database version, if not existing return 0."""
-        async with or_default_db(db) as db, db.cursor() as cursor:
+        async with or_default_db(db) as conn, conn.cursor() as cursor:
             return await cls._get_version(cursor)
 
     @staticmethod

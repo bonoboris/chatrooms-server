@@ -6,6 +6,7 @@ from typing import Any
 import psycopg
 import psycopg.rows
 from fastapi import FastAPI
+from pydantic import SecretStr
 
 from chatrooms import auth, schemas
 from chatrooms.database import DB
@@ -19,8 +20,8 @@ DB_NAME = "test"
 @functools.lru_cache
 def get_testing_settings() -> SettingsModel:
     return SettingsModel(
-        pg_username="test",
-        pg_password="test",  # noqa: S106
+        pg_user="test",
+        pg_password=SecretStr("test"),
         pg_database=DB_NAME,
     )
 
@@ -28,9 +29,9 @@ def get_testing_settings() -> SettingsModel:
 def reset_database() -> None:
     """Drop and recreate the test database."""
     settings = get_testing_settings()
-    with psycopg.Connection.connect(
-        user=settings.pg_username,
-        password=settings.pg_password,
+    with psycopg.Connection[dict[str, Any]].connect(
+        user=settings.pg_user,
+        password=settings.pg_password.get_secret_value(),
         host=settings.pg_host,
         dbname="postgres",
         row_factory=psycopg.rows.dict_row,
@@ -42,8 +43,10 @@ def reset_database() -> None:
 
 async def reset_tables(db: DB) -> None:
     """Recreate the tables in the test database."""
-    await migrations_core.all_down(db)
-    await migrations_core.all_up(db)
+    for migration in reversed(migrations_core.MIGRATIONS):
+        await migration.down(db)
+    for migration in migrations_core.MIGRATIONS:
+        await migration.up(db)
     await db.commit()
 
 

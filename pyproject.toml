@@ -35,7 +35,7 @@ dev = [
 ]
 
 [tool.pdm.scripts]
-dev = "uvicorn 'chatrooms.app:create_app' --factory"
+dev.shell = "uvicorn 'chatrooms.app:create_app' --factory"
 test = "pytest"
 
 lint = "ruff check ."
@@ -50,7 +50,8 @@ cov = { composite = ["cov-erase", "cov-run", "cov-report"] }
 
 
 [project.scripts]
-migrate = "chatrooms.database.migrations:cli"
+migrate = "chatrooms.database.migrations.cli:cli"
+manage = "chatrooms.database.manage:cli"
 
 
 [tool.pytest.ini_options]

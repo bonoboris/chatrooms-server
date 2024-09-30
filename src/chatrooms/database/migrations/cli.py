@@ -1,6 +1,5 @@
 """Migration CLI."""
 
-
 import asyncio
 import logging
 
@@ -9,7 +8,7 @@ import typer
 from chatrooms.database.migrations import core
 from chatrooms.settings import get_settings
 
-cli = typer.Typer()
+cli = typer.Typer(name="migrate", help="Manage database migrations")
 
 
 @cli.callback()
@@ -32,19 +31,19 @@ def version() -> None:
 
 
 @cli.command()
-def up() -> None:
-    """Run one up migration."""
+def up(all: bool = True) -> None:  # noqa: A002, FBT001, FBT002
+    """Run one or all up migration(s)."""
     settings = get_settings()
-    done = asyncio.run(core.one_up(settings))
-    typer.echo(f"Done: {done}")
+    _run = core.all_up if all else core.one_up
+    asyncio.run(_run(settings))
 
 
 @cli.command()
-def down() -> None:
-    """Run one down migration."""
+def down(all: bool = True) -> None:  # noqa: A002, FBT001, FBT002
+    """Run one or all down migration(s)."""
     settings = get_settings()
-    done = asyncio.run(core.one_down(settings))
-    typer.echo(f"Done: {done}")
+    _run = core.all_down if all else core.one_down
+    asyncio.run(_run(settings))
 
 
 if __name__ == "__main__":

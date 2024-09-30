@@ -1,6 +1,5 @@
 """Migration subpackage errors."""
 
-
 from typing import Self
 
 

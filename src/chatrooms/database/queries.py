@@ -1,4 +1,5 @@
 """All database queries."""
+
 import datetime
 import functools
 from collections.abc import Awaitable, Callable
@@ -45,6 +46,18 @@ def cursor_or_db(
     return decorator
 
 
+####################################################################################################
+# Users
+####################################################################################################
+
+
+@cursor_or_db(schemas.UserDB)
+async def select_all_users(cursor: AsyncCursor[schemas.UserDB]) -> list[schemas.UserDB]:
+    """Select all users."""
+    await cursor.execute("""SELECT * FROM users""")
+    return await cursor.fetchall()
+
+
 @cursor_or_db(schemas.UserDB)
 async def select_user_by_id(cursor: AsyncCursor[schemas.UserDB], id: int) -> schemas.UserDB | None:
     """Select user by id."""
@@ -68,6 +81,38 @@ async def select_user_by_username(
 
 
 @cursor_or_db(schemas.UserDB)
+async def insert_user(
+    cursor: AsyncCursor[schemas.UserDB],
+    username: str,
+    email: str,
+    digest: str,
+    *,
+    is_active: bool,
+    created_at: datetime.datetime,
+) -> schemas.UserDB:
+    """Insert a user."""
+    await cursor.execute(
+        """
+        INSERT INTO users(username, email, digest, is_active, created_at)
+        VALUES (%(username)s, %(email)s, %(digest)s, %(is_active)s, %(created_at)s)
+        RETURNING *
+        """,
+        {
+            "username": username,
+            "email": email,
+            "digest": digest,
+            "is_active": is_active,
+            "created_at": created_at,
+        },
+    )
+    user = await cursor.fetchone()
+    if user is None:
+        table = "users"
+        raise NotFoundAfterInsertError(table)
+    return user
+
+
+@cursor_or_db(schemas.UserDB)
 async def update_user_avatar_id_by_id(
     cursor: AsyncCursor[schemas.UserDB], id: int, avatar_id: int
 ) -> schemas.UserDB | None:
@@ -77,10 +122,26 @@ async def update_user_avatar_id_by_id(
         UPDATE users
         SET avatar_id = %(avatar_id)s
         WHERE id = %(id)s
+        RETURNING *
         """,
         {"id": id, "avatar_id": avatar_id},
     )
     return await cursor.fetchone()
+
+
+@cursor_or_db(schemas.UserDB)
+async def delete_user_by_id(cursor: AsyncCursor[schemas.UserDB], id: int) -> bool:
+    """Delete user by id."""
+    await cursor.execute(
+        """DELETE FROM users WHERE id = %(id)s""",
+        {"id": id},
+    )
+    return cursor.rowcount > 0
+
+
+####################################################################################################
+# Files
+####################################################################################################
 
 
 @cursor_or_db(schemas.FileDB)
@@ -148,6 +209,11 @@ async def insert_file(  # noqa: PLR0913
     return file
 
 
+####################################################################################################
+# Messages
+####################################################################################################
+
+
 @cursor_or_db(schemas.Message)
 async def select_all_messages(
     cursor: AsyncCursor[schemas.Message], limit: int, offset: int
@@ -205,6 +271,11 @@ async def insert_message(
     return message
 
 
+####################################################################################################
+# Rooms
+####################################################################################################
+
+
 @cursor_or_db(schemas.Room)
 async def select_all_rooms(
     cursor: AsyncCursor[schemas.Room], limit: int, offset: int
@@ -245,6 +316,11 @@ async def select_room_by_id(cursor: AsyncCursor[schemas.Room], id: int) -> schem
         {"id": id},
     )
     return await cursor.fetchone()
+
+
+####################################################################################################
+# To-dos
+####################################################################################################
 
 
 @cursor_or_db(schemas.Todo)

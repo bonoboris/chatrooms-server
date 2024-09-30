@@ -77,7 +77,7 @@ async def validate_file(
 
 def generate_filename(uploaded_at: datetime, checksum: str) -> str:
     """Generate a filepath from folder, upload_at and checksum."""
-    return f"{int(uploaded_at.timestamp())}_{randbytes(4).hex()}_{checksum[:16]}"
+    return f"{int(uploaded_at.timestamp())}_{randbytes(4).hex()}_{checksum[:16]}"  # noqa: S311
 
 
 def write_on_filesystem(filepath: str | PathLike[str], data: bytes) -> None:

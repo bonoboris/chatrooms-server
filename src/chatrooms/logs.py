@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from logging import LogRecord, makeLogRecord
 from os import PathLike
 from pathlib import Path
-from typing import ClassVar, Self, override
+from typing import ClassVar, Self, cast, override
 
 from colorama import Fore, Style
 
@@ -82,7 +82,7 @@ class TerminalFormatter(logging.Formatter):
         )
         record_attrs = ((key, value) for key, value in record_attrs if value is not None)
         extras = " ".join(
-            f"{self._format_key_value(key, value)}"
+            f"{self._format_key_value(key, str(value))}"
             for key, value in itertools.chain(get_record_extra(record).items(), record_attrs)
         )
 
@@ -129,15 +129,31 @@ class JsonFormatter(logging.Formatter):
 CONFIG_FILE = Path(__file__).parent / "logging.json"
 
 
+def get_queue_handler_listener() -> logging.handlers.QueueListener:
+    """Get the queue handler from the root logger."""
+    queue_handler = logging.getHandlerByName("queue")
+    if not isinstance(queue_handler, logging.handlers.QueueHandler):
+        msg = f"Expected a `QueueHandler`, got {type(queue_handler)}"
+        raise TypeError(msg)
+    listener = cast(logging.handlers.QueueListener | None, queue_handler.listener)  # type: ignore[]
+    if listener is None:
+        msg = "QueueHandler().listener is None"
+        raise TypeError(msg)
+    return listener
+
+
+def stop_listener() -> None:
+    """Stop the queue listener."""
+    listener = get_queue_handler_listener()
+    if listener._thread is not None:  # noqa: SLF001
+        listener.stop()
+
+
 def configure(config_file: str | PathLike[str] = CONFIG_FILE) -> None:
     """Setup logging."""
     with Path(config_file).open() as file:
         config = json.load(file)
     logging.config.dictConfig(config)
-    queue_handler = logging.getHandlerByName("queue")
-    if queue_handler is not None:
-        if not isinstance(queue_handler, logging.handlers.QueueHandler):
-            msg = f"Expected a `QueueHandler`, got {type(queue_handler)}"
-            raise TypeError(msg)
-        queue_handler.listener.start()  # type: ignore[reportUnknownMemberType]
-        atexit.register(queue_handler.listener.stop)  # type: ignore[reportUnknownMemberType]
+    listener = get_queue_handler_listener()
+    listener.start()
+    atexit.register(stop_listener)

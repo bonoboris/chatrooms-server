@@ -18,16 +18,19 @@ DB_VERSION = __version__.DB_VERSION
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncIterator[None]:
     """Run startup and shutdown events."""
+    LOGGER.info("Server startup")
     db_version = await migrations.migration_protocol.MigrationProtocol.get_version()
     if db_version != DB_VERSION:
         raise migrations.errors.DatabaseVersionError(expected=DB_VERSION, got=db_version)
     yield
+    LOGGER.info("Server teardown")
+    logs.stop_listener()
 
 
 def create_app() -> fastapi.FastAPI:
     """Create the FastAPI application."""
     logs.configure()
-    LOGGER.info("Starting server", extra={"version": __version__})
+    LOGGER.info("Creating server", extra={"version": VERSION, "db_version": DB_VERSION})
     app = fastapi.FastAPI(
         title="Chatrooms API",
         description="""API for Chatrooms project.""",
@@ -54,4 +57,5 @@ def create_app() -> fastapi.FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    LOGGER.info("Server created", extra={"version": VERSION, "db_version": DB_VERSION})
     return app

@@ -6,13 +6,17 @@ from typing import Annotated
 
 import pydantic_settings
 from fastapi import Depends
-from pydantic import DirectoryPath
+from pydantic import DirectoryPath, SecretStr
 
 
 class SettingsModel(pydantic_settings.BaseSettings):
     """Chatrooms API settings."""
 
-    secret_key: str = "secret"
+    model_config = pydantic_settings.SettingsConfigDict(
+        env_prefix="chatrooms_api_", env_file=".env", extra="ignore"
+    )
+
+    secret_key: SecretStr = SecretStr("secret")
     """Secret key used to sign JWT tokens."""
     access_token_expires: int = 30 * 60  # 30 minutes
     """Access token expiration time in seconds."""
@@ -21,12 +25,12 @@ class SettingsModel(pydantic_settings.BaseSettings):
     cookie_max_age: int = 2 * 60 * 60  # 2 hours
     """Cookie max age in seconds."""
 
-    pg_username: str = "postgres"
-    """PostgreSQL database user name."""
-    pg_password: str = "postgres"
+    pg_user: str = "postgres"
+    """PostgreSQL database user."""
+    pg_password: SecretStr = SecretStr("postgres")
     """PostgreSQL database user password."""
-    pg_host: str = "localhost"
-    """PostgreSQL database host."""
+    pg_host: str = ""
+    """PostgreSQL database host (empty for unix socket)."""
     pg_port: int = 5432
     """PostgreSQL database port."""
     pg_database: str = "chatrooms"
@@ -34,10 +38,6 @@ class SettingsModel(pydantic_settings.BaseSettings):
 
     fs_root: DirectoryPath = Path("/data/chatrooms")
     """File systeme root folder for uploaded files."""
-
-    model_config = pydantic_settings.SettingsConfigDict(
-        env_prefix="chatrooms_api_", env_file=".env"
-    )
 
 
 @functools.lru_cache

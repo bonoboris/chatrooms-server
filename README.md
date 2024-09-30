@@ -1,6 +1,8 @@
 # Chatrooms server
 
-Chatrooms server is the server for a instant messaging app.
+Chatrooms server is the server for chatrooms, an instant messaging app (see [client](https://github.com/bonoboris/chatrooms-client)).
+
+Chatrooms is a showcase project of a full-stack web application.
 
 ## Installation
 
@@ -13,16 +15,16 @@ pdm install
 ## Usage
 
 You should have access to a running PostgreSQL database;
-by default the application will try to connect to: `postgresql://postgres:postgres@localhost:5432`
+by default the application will try to connect with user `postgres:postgres` using a UNIX socket (`/var/run/postgresql`).
 
 Run server in development mode
 
 ```sh
-pdm run start
+pdm dev
 ```
 
 Run tests
 
 ```sh
-pdm run tests
+pdm test
 ```
