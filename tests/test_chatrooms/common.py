@@ -6,7 +6,6 @@ from typing import Any
 import psycopg
 import psycopg.rows
 from fastapi import FastAPI
-from pydantic import SecretStr
 
 from chatrooms import auth, schemas
 from chatrooms.database import DB
@@ -14,16 +13,12 @@ from chatrooms.database.connections import get_db_connection
 from chatrooms.database.migrations import core as migrations_core
 from chatrooms.settings import SettingsModel
 
-DB_NAME = "test"
+DB_NAME = "chatrooms_test"
 
 
 @functools.lru_cache
 def get_testing_settings() -> SettingsModel:
-    return SettingsModel(
-        pg_user="test",
-        pg_password=SecretStr("test"),
-        pg_database=DB_NAME,
-    )
+    return SettingsModel(pg_database=DB_NAME)
 
 
 def reset_database() -> None:
@@ -37,8 +32,8 @@ def reset_database() -> None:
         row_factory=psycopg.rows.dict_row,
         autocommit=True,
     ) as conn:
-        conn.execute("DROP DATABASE TEST")
-        conn.execute("CREATE DATABASE TEST")
+        conn.execute(f"DROP DATABASE IF EXISTS {DB_NAME}")
+        conn.execute(f"CREATE DATABASE {DB_NAME}")
 
 
 async def reset_tables(db: DB) -> None:

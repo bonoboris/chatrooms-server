@@ -1,0 +1,25 @@
+5	done	Having a generic name	2023-05-12 17:42:38.714654+02	2	2023-05-12 17:42:38.714654+02
+6	todo	Be real	2023-05-12 17:42:38.71566+02	2	2023-05-12 17:42:38.71566+02
+7	todo	Have goal in life	2023-05-12 17:42:38.716639+02	2	2023-05-12 17:42:38.716639+02
+1	done	API with SQLite	2023-05-12 17:42:38.710206+02	1	2023-05-12 17:42:38.710206+02
+3	done	Install Python driver?\ninstalled: asyncpg	2023-05-12 17:42:38.712696+02	1	2023-05-12 17:42:38.712696+02
+2	done	Install Postgresql	2023-05-12 17:42:38.711718+02	1	2023-05-12 17:42:38.711718+02
+4	done	Install Make CRUD routes.	2023-05-12 17:42:38.71367+02	1	2023-05-12 17:42:38.71367+02
+10	todo	Make Modal backdrop click exit only if mousedown and mouse up are outside of element.\nCurrent: only mouseup event position is accounted	2023-05-27 22:54:33.433233+02	1	2023-05-27 22:54:33.433233+02
+12	todo	Create Chatrooms logo	2023-05-27 23:17:47.613416+02	1	2023-05-27 23:17:47.613416+02
+11	todo	Darkmode / Whitemode switch	2023-05-27 22:55:02.3424+02	1	2023-06-25 21:14:59.243082+02
+8	done	Basic chat rooms:\n- GUI: can type and send message\n- API: message is received and saved\n- API: can fetch messages by created_at\n- GUI: show messages (with date and author username) 	2023-05-27 22:51:48.750536+02	1	2023-07-16 23:33:05.034566+02
+13	in progress	Handle migrations nicely	2023-05-27 23:19:09.354684+02	1	2023-07-16 23:33:24.625361+02
+9	done	Add profile pictures	2023-05-27 22:52:31.083029+02	1	2023-11-02 20:44:56.605355+01
+14	todo	Add images to rooms / messages	2023-06-25 21:49:39.273463+02	1	2023-11-03 00:42:27.26599+01
+15	todo	Public / private rooms	2023-11-03 00:43:06.609153+01	1	2023-11-03 00:43:06.609153+01
+16	todo	Add pinned rooms in sidebar	2023-11-03 00:49:35.756645+01	1	2023-11-03 00:49:35.756645+01
+17	todo	Other users profile page / popup ?	2023-11-03 00:49:55.635285+01	1	2023-11-03 00:49:55.635285+01
+18	todo	Auto submit action on Enter  / Ctrl+Enter	2023-11-03 00:50:24.075002+01	1	2023-11-03 00:50:24.075002+01
+19	todo	3 column layout + dragable todos	2023-11-03 00:51:15.384248+01	1	2023-11-03 00:51:15.384248+01
+21	todo	List of current user in the room	2023-11-03 00:52:21.338268+01	1	2023-11-03 00:52:21.338268+01
+23	todo	Deploy somewhere, maybe render:\nhttps://render.com/	2023-11-03 01:03:24.732273+01	1	2023-11-03 01:03:24.732273+01
+20	todo	try bun for frontend ?	2023-11-03 00:51:24.910022+01	1	2023-11-03 13:54:53.929388+01
+25	todo	Handle multiple connections by same user	2023-11-03 15:03:47.364974+01	1	2023-11-03 15:03:47.364974+01
+26	done	Delete todos	2023-11-03 15:05:47.260403+01	1	2023-11-04 16:50:49.877807+01
+24	in progress	Create description page(s) with:\n- techs / dependencies\n- features\n- archi 	2023-11-03 12:42:04.473477+01	1	2023-11-04 18:35:57.748802+01

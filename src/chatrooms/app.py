@@ -32,7 +32,7 @@ def create_app() -> fastapi.FastAPI:
     logs.configure()
     LOGGER.info("Creating server", extra={"version": VERSION, "db_version": DB_VERSION})
     app = fastapi.FastAPI(
-        title="Chatrooms API",
+        title="Chatrooms",
         description="""API for Chatrooms project.""",
         version=VERSION,
         lifespan=lifespan,

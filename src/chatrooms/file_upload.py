@@ -82,7 +82,9 @@ def generate_filename(uploaded_at: datetime, checksum: str) -> str:
 
 def write_on_filesystem(filepath: str | PathLike[str], data: bytes) -> None:
     """Write data on filesystem."""
-    with Path(filepath).open("wb") as file:
+    fpath = Path(filepath)
+    fpath.parent.mkdir(parents=True, exist_ok=True)
+    with fpath.open("wb") as file:
         file.write(data)
 
 

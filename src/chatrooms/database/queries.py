@@ -52,9 +52,14 @@ def cursor_or_db(
 
 
 @cursor_or_db(schemas.UserDB)
-async def select_all_users(cursor: AsyncCursor[schemas.UserDB]) -> list[schemas.UserDB]:
+async def select_all_users(
+    cursor: AsyncCursor[schemas.UserDB], limit: int | None = None, offset: int = 0
+) -> list[schemas.UserDB]:
     """Select all users."""
-    await cursor.execute("""SELECT * FROM users""")
+    await cursor.execute(
+        """SELECT * FROM users LIMIT %(limit)s OFFSET %(offset)s""",
+        {"limit": limit, "offset": offset},
+    )
     return await cursor.fetchall()
 
 
@@ -110,6 +115,23 @@ async def insert_user(
         table = "users"
         raise NotFoundAfterInsertError(table)
     return user
+
+
+@cursor_or_db(schemas.UserDB)
+async def update_user_digest_by_id(
+    cursor: AsyncCursor[schemas.UserDB], id: int, digest: str
+) -> schemas.UserDB | None:
+    """Update user digest field by id."""
+    await cursor.execute(
+        """
+        UPDATE users
+        SET digest = %(digest)s
+        WHERE id = %(id)s
+        RETURNING *
+        """,
+        {"id": id, "digest": digest},
+    )
+    return await cursor.fetchone()
 
 
 @cursor_or_db(schemas.UserDB)
@@ -316,6 +338,16 @@ async def select_room_by_id(cursor: AsyncCursor[schemas.Room], id: int) -> schem
         {"id": id},
     )
     return await cursor.fetchone()
+
+
+@cursor_or_db(schemas.Room)
+async def delete_room_by_id(cursor: AsyncCursor[schemas.Room], id: int) -> bool:
+    """Delete room by id."""
+    await cursor.execute(
+        """DELETE FROM rooms WHERE id = %(id)s""",
+        {"id": id},
+    )
+    return cursor.rowcount > 0
 
 
 ####################################################################################################

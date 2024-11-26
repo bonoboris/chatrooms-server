@@ -1,4 +1,4 @@
-"""Chatrooms API settings."""
+"""Chatrooms server settings."""
 
 import functools
 from pathlib import Path
@@ -10,17 +10,17 @@ from pydantic import DirectoryPath, SecretStr
 
 
 class SettingsModel(pydantic_settings.BaseSettings):
-    """Chatrooms API settings."""
+    """Chatrooms server settings."""
 
     model_config = pydantic_settings.SettingsConfigDict(
-        env_prefix="chatrooms_api_", env_file=".env", extra="ignore"
+        env_prefix="chatrooms_server_", env_file=".env", extra="ignore"
     )
 
     secret_key: SecretStr = SecretStr("secret")
     """Secret key used to sign JWT tokens."""
     access_token_expires: int = 30 * 60  # 30 minutes
     """Access token expiration time in seconds."""
-    refresh_token_expires: int = 30 * 24 * 60 * 60  # 30 days
+    refresh_token_expires: int = 24 * 60 * 60  # 30 days
     """Refresh token expiration time in seconds."""
     cookie_max_age: int = 2 * 60 * 60  # 2 hours
     """Cookie max age in seconds."""

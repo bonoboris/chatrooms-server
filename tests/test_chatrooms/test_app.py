@@ -12,5 +12,4 @@ def test_app_status(client: TestClient):
 
 
 async def test_db_conn(empty_db: DB):
-    assert empty_db.info.user == "test"
     assert empty_db.info.status == ConnStatus.OK

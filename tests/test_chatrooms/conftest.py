@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
@@ -28,12 +27,9 @@ from .common import (
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop_policy():
     """Session scope uvloop as event loop."""
-    loop = uvloop.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
+    return uvloop.EventLoopPolicy()
 
 
 @pytest.fixture(scope="session")

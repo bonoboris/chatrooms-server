@@ -9,7 +9,7 @@ authors = [{ name = "bonoboris", email = "bonoboris@mailo.com" }]
 dynamic = ["version"]
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 classifiers = ["Framework :: FastAPI", "Programming Language :: Python :: 3"]
 dependencies = [
     "fastapi[all]>=0.100.1",
@@ -19,35 +19,6 @@ dependencies = [
     "typer[all]>=0.9.0",
     "colorama>=0.4.6",
 ]
-
-[tool.pdm.version]
-source = "file"
-path = "src/chatrooms/__version__.py"
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "coverage>=7.2.7",
-    "pyright>=1.1.318",
-    "pytest>=7.4.0",
-    "pytest-asyncio<0.22",
-    "nox>=2023.4.22",
-    "devtools>=0.11.0",
-]
-
-[tool.pdm.scripts]
-dev.shell = "uvicorn 'chatrooms.app:create_app' --factory"
-test = "pytest"
-
-lint = "ruff check ."
-format = "ruff format ."
-
-type-check = "pyright ."
-
-cov-erase = "coverage erase"
-cov-run = "coverage run -m pytest"
-cov-report = "coverage html"
-cov = { composite = ["cov-erase", "cov-run", "cov-report"] }
-
 
 [project.scripts]
 migrate = "chatrooms.database.migrations.cli:cli"
@@ -66,6 +37,7 @@ filterwarnings = [
 ]
 # pytest-asyncio
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 
 [tool.coverage.run]
 branch = true
@@ -92,6 +64,8 @@ ignore = [
     "TCH001", # Move application import into a type-checking block  <--  FastAPI use annotations at runtime
     "TCH002", # Move third-party import into a type-checking block  <--  FastAPI use annotations at runtime
     "TCH003", # Move standard library import into a type-checking block  <--  it's ok
+    "TD002",  # Missing author in TODO  <--  it's me
+    "TD003",  # Missing issue link in TODO  <-- no need
 ]
 
 isort.known-first-party = ["chatrooms"]
@@ -110,3 +84,31 @@ flake8-type-checking.runtime-evaluated-base-classes = [
     "ANN202", # Missing return type annotation for private function
     "S101",   # Use of assert detected
 ]
+
+[tool.pdm.version]
+source = "file"
+path = "src/chatrooms/__version__.py"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "coverage>=7.2.7",
+    "pyright>=1.1.318",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.24.0",
+    "devtools>=0.11.0",
+    "mypy>=1.11.2",
+]
+
+[tool.pdm.scripts]
+dev.shell = "uvicorn 'chatrooms.main:app' --reload --reload-dir src --log-config src/chatrooms/logging.json"
+test = "pytest"
+
+lint = "ruff check ."
+format = "ruff format ."
+
+type-check = "pyright ."
+
+cov-erase = "coverage erase"
+cov-run = "coverage run -m pytest"
+cov-report = "coverage html"
+cov = { composite = ["cov-erase", "cov-run", "cov-report"] }
